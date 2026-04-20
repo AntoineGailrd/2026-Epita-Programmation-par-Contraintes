@@ -25,7 +25,7 @@ Ce document presente les sujets de projet pour le cours de Programmation par Con
 Les notebooks suivants sont disponibles dans le depot CoursIA ([jsboige/CoursIA](https://github.com/jsboige/CoursIA)) et constituent des prerequis ou des points de depart pour les projets :
 - **Search/Part1-Foundations/** : Search-1 (StateSpace), Search-3 (A*, heuristiques), Search-4 (Local Search), Search-9 (Programmation lineaire), Search-11 (Metaheuristiques)
 - **Search/Part2-CSP/** : CSP-1 (Fondamentaux), CSP-4 (Scheduling, IntervalVar, NoOverlap, Cumulative), CSP-5 (Optimization, Bin Packing, Knapsack), CSP-6 (Hybridation CP+SAT, LLM+CSP), CSP-7 (Soft Constraints), CSP-9 (Distributed CSP)
-- **Search/Applications/CSP/** : App-4 (Job-Shop Scheduling), App-8 (MiniZinc), App-11 (Picross), App-17 (VRP Logistics)
+- **Search/Applications/CSP/** : App-4 (Job-Shop Scheduling), App-8 (MiniZinc), App-11 (Picross)
 - **Search/Applications/Hybrid/** : App-10 (Portfolio Optimization), App-13 (TSP Metaheuristics), App-17 (VRP avec SA, GA, ACO, CP-SAT)
 - **SymbolicAI/SmartContracts/** : Serie de 27 notebooks (SC-0 a SC-26) couvrant blockchain, Solidity, verification formelle (SC-14), fuzz testing (SC-13), cryptographie ZKP/HE (SC-15/16)
 - **SymbolicAI/Planners/** : Planners-1 a Planners-12 couvrant PDDL, Fast Downward, planification temporelle, HTN, LLM Planning
@@ -64,7 +64,7 @@ Les notebooks suivants sont disponibles dans le depot CoursIA ([jsboige/CoursIA]
 | [C1](#c1---tournees-de-livraison-vertes-electric-vrp) | Tournees de livraison vertes (Electric VRP) | 3/5 |
 | [C2](#c2---ordonnancement-ferroviaire-railway-timetabling) | Ordonnancement ferroviaire (Railway Timetabling) | 4/5 |
 | [C3](#c3---livraison-par-drones-drone-delivery-routing) | Livraison par drones (Drone Delivery Routing) | 3/5 |
-| [C4](#c4---optimisation-de-constellation-satellite) | Optimisation de constellation satellite | 4/5 |
+| [C4](#c4---assemblage-orbital-de-satellites-orbital-assembly-scheduling) | Assemblage orbital de satellites | 4/5 |
 
 ### Categorie D : Cloud, Edge et Energie
 
@@ -389,7 +389,7 @@ Le Resource-Constrained Project Scheduling Problem (RCPSP) est le probleme de re
 
 ## C1 - Tournees de livraison vertes (Electric VRP)
 
-Le Electric Vehicle Routing Problem (EVRP) etend le Vehicle Routing Problem classique en ajoutant des contraintes d'autonomie de batterie, de recharge aux bornes, et de couts energetiques variables selon le profil de la route (pente, vitesse, charge transportee). L'objectif est de planifier les tournees d'une flotte de camions electriques en minimisant la distance totale ou les emissions de CO2, tout en respectant les fenetres horaires des clients et les capacites des vehicules. La modelisation CP-SAT combine des contraintes de tournees (Circuit), de capacite (Knapsack), et d'autonomie (fenetres cumulatives).
+Le Electric Vehicle Routing Problem (EVRP) etend le Vehicle Routing Problem classique en ajoutant des contraintes d'autonomie de batterie, de recharge aux bornes, et de couts energetiques variables selon le profil de la route (pente, vitesse, charge transportee). L'objectif est de planifier les tournees d'une flotte de camions electriques en minimisant la distance totale ou les emissions de CO2, tout en respectant les fenetres horaires des clients et les capacites des vehicules. La modelisation CP-SAT combine des contraintes de tournees (Circuit), de capacite (Knapsack), et d'autonomie (fenetres cumulatives). **Note** : contrairement au VRP classique (EPF, annexe #20), l'EVRP introduit des contraintes de consommation energetique variable et de localisation de bornes de recharge qui modifient structurellement le modele CP-SAT (variables binaires de recharge, contraintes cumulatives non-lineaires de degradation batterie, decisions conjointes de tournees ET de placement de bornes).
 
 ### Objectifs
 - Modeliser l'EVRP en CP-SAT avec contraintes de tournee, capacite, autonomie batterie et recharge
@@ -419,7 +419,7 @@ Le Electric Vehicle Routing Problem (EVRP) etend le Vehicle Routing Problem clas
 
 ## C2 - Ordonnancement ferroviaire (Railway Timetabling)
 
-Le Railway Timetabling Problem consiste a planifier les passages de trains sur un reseau ferroviaire en respectant les contraintes de voie unique (sur certains troncons), de signalisation (intervalles minimum entre trains), de correspondances (correspondance entre lignes), et de temps de trajet minimum/maximum. C'est un probleme de scheduling massif avec des ressources partagees (voies, quais, signaux) qui se modelise avec IntervalVar, NoOverlap (pour les troncons a voie unique) et Cumulative (pour les gares a quais multiples). Le modele PESP (Periodic Event Scheduling Problem) est la formalisation de reference.
+Le Railway Timetabling Problem consiste a planifier les passages de trains sur un reseau ferroviaire en respectant les contraintes de voie unique (sur certains troncons), de signalisation (intervalles minimum entre trains), de correspondances (correspondance entre lignes), et de temps de trajet minimum/maximum. C'est un probleme de scheduling massif avec des ressources partagees (voies, quais, signaux) qui se modelise avec IntervalVar, NoOverlap (pour les troncons a voie unique) et Cumulative (pour les gares a quais multiples). Le modele PESP (Periodic Event Scheduling Problem) est la formalisation de reference. **Note** : contrairement au timetabling universitaire (annexe #14), le Railway Timetabling opere sur des ressources continues (trons de voie avec longueur et signalisation), des contraintes periodiques strictes (PESP), des blocs de voie exclusive (NoOverlap sur des intervalles temporels longs), et un reseau physique fixe avec des goulets d'etranglement. L'espace de solution est structurellement different : pas de "salles" discretes mais des "trons de voie" avec capacite 1 et temps de traversal variables selon le type de train.
 
 ### Objectifs
 - Modeliser le Railway Timetabling comme un probleme PESP avec contraintes periodiques et CP-SAT
@@ -449,7 +449,7 @@ Le Railway Timetabling Problem consiste a planifier les passages de trains sur u
 
 ## C3 - Livraison par drones (Drone Delivery Routing)
 
-Le Drone Delivery Routing Problem consiste a planifier les tournees d'une flotte de drones de livraison depuis un depot central, en respectant les contraintes d'autonomie (batterie), de capacite de charge (poids et volume), de zones de vol interdites, et de conditions meteorologiques. Ce probleme est une variante du VRP avec des specificites aeriennes : les drones ne sont pas soumis aux contraintes routieres mais ont une autonomie limitee et une capacite reduite. Le modele CP-SAT combine des contraintes de tournees, de capacite knapsack, et d'autonomie cumulative avec rechargement au depot.
+Le Drone Delivery Routing Problem consiste a planifier les tournees d'une flotte de drones de livraison depuis un depot central, en respectant les contraintes d'autonomie (batterie), de capacite de charge (poids et volume), de zones de vol interdites, et de conditions meteorologiques. Ce probleme est une variante du VRP avec des specificites aeriennes : les drones ne sont pas soumis aux contraintes routieres mais ont une autonomie limitee et une capacite reduite. Le modele CP-SAT combine des contraintes de tournees, de capacite knapsack, et d'autonomie cumulative avec rechargement au depot. **Note** : contrairement au VRP classique (annexe #20), le Drone VRP opere en espace euclidien 3D (pas de graphe routier), avec des contraintes de zone de vol interdite (polygones NOTAM), de distance euclidienne au lieu de plus court chemin routier, et de conditions meteorologiques dynamiques qui modifient l'autonomie en vol. Le graphe de tournees est fondamentalement different (complete, pondere par distance euclidienne vs sparse, pondere par reseau routier).
 
 ### Objectifs
 - Modeliser le Drone Delivery Routing comme un VRP avec contraintes specifiques drones (autonomie, capacite, zones) en CP-SAT
@@ -477,31 +477,31 @@ Le Drone Delivery Routing Problem consiste a planifier les tournees d'une flotte
 
 ---
 
-## C4 - Optimisation de constellation satellite
+## C4 - Assemblage orbital de satellites (Orbital Assembly Scheduling)
 
-L'optimisation de constellation satellite consiste a planifier les observations et les communications d'un ensemble de satellites en orbite, sous des contraintes de fenetres de visibilite (le satellite ne peut observer qu'une zone au sol lorsqu'il la survole), d'energie solaire (panneaux charges en journee), de memoire embarquee limitee, et de conflits entre observations simultanees. C'est un probleme de scheduling spatial qui combine des contraintes temporelles strictes (fenetres de visibilite calculees par mecanique orbitale) et des contraintes de ressources (energie, memoire, antennes).
+L'assemblage orbital de satellites consiste a planifier les manoeuvres de rendez-vous spatial entre modules autonomes (propulsion, charge utile, panneaux solaires) qui doivent s'assembler en orbite pour former un satellite complet. Contrairement au scheduling d'observations (traité par EPITA 2025), ce sujet se concentre sur la planification de manoeuvres orbitales (changements d'orbite, synchronisation de vitesses, approche finale) avec des contraintes de carburant (delta-V limite par manoeuvre), de fenetres de lancement, de communication avec le sol, et de secuence d'assemblage (certains modules doivent etre installes avant d'autres). C'est un probleme de scheduling spatial structurellement different de la planification d'observations.
 
 ### Objectifs
-- Modeliser le scheduling de constellation satellite en CP-SAT avec IntervalVar pour les observations et fenetres de visibilite
-- Implementer les contraintes de fenetre de visibilite (propagation orbitale), d'energie (budget cumulatif), et de memoire embarquee
-- Ajouter les contraintes de conflit (un satellite ne peut observer deux zones en meme temps) et de downlink
-- Evaluer sur des instances synthetiques basees sur les parametres orbitaux de constellations reelles (Starlink, OneWeb)
-- Comparer CP-SAT avec un algorithme glouton base sur les fenetres de visibilite priorisees
+- Modeliser l'assemblage orbital en CP-SAT avec IntervalVar pour les manoeuvres et NoOverlap pour les exclusions mutuelles orbitales
+- Implementer les contraintes de delta-V (budget carburant cumulatif), de fenetres de lancement, et de precedence entre modules
+- Ajouter les contraintes de communication (visibilite stations sol) et de securite (distance minimale entre modules)
+- Evaluer sur des instances synthetiques basees sur les parametres orbitaux reels (LEO, GEO, transfert de Hohmann)
+- Comparer CP-SAT avec un ordonnancement glouton par fenetres de lancement priorisees
 
 ### Notebooks CoursIA pertinents
 
 | Notebook | Chemin | Pertinence |
 |----------|--------|------------|
-| CSP-4 Scheduling | [Search/Part2-CSP/CSP-4.ipynb](https://github.com/jsboige/CoursIA/blob/main/MyIA.AI.Notebooks/Search/Part2-CSP/CSP-4.ipynb) | IntervalVar, scheduling |
-| App-4 Job-Shop Scheduling | [Search/Applications/CSP/App-4.ipynb](https://github.com/jsboige/CoursIA/blob/main/MyIA.AI.Notebooks/Search/Applications/CSP/App-4.ipynb) | Job-shop, affectation |
+| CSP-4 Scheduling | [Search/Part2-CSP/CSP-4.ipynb](https://github.com/jsboige/CoursIA/blob/main/MyIA.AI.Notebooks/Search/Part2-CSP/CSP-4.ipynb) | IntervalVar, NoOverlap, Cumulative |
+| App-4 Job-Shop Scheduling | [Search/Applications/CSP/App-4.ipynb](https://github.com/jsboige/CoursIA/blob/main/MyIA.AI.Notebooks/Search/Applications/CSP/App-4.ipynb) | Precedences, makespan |
 | CSP-5 Optimization | [Search/Part2-CSP/CSP-5.ipynb](https://github.com/jsboige/CoursIA/blob/main/MyIA.AI.Notebooks/Search/Part2-CSP/CSP-5.ipynb) | Optimisation sous contraintes |
 | Search-11 Metaheuristiques | [Search/Part1-Foundations/Search-11.ipynb](https://github.com/jsboige/CoursIA/blob/main/MyIA.AI.Notebooks/Search/Part1-Foundations/Search-11.ipynb) | Metaheuristiques |
 
 ### References externes
-- Gabrel, V., & Vanderbeck, F. (2014). "Collection Planning for the SPOT Satellite Constellation." *INFORMS Journal on Computing*, 26(2), 367-382. [INFORMS](https://pubsonline.informs.org/doi/abs/10.1287/ijoc.2013.0568)
-- Lemaitre, M., et al. (2002). "Selecting and Scheduling Observations of Agile Satellites." *Aerospace Science and Technology*, 6(5), 367-381. [ScienceDirect](https://www.sciencedirect.com/science/article/pii/S1270963802011732)
-- She, X., et al. (2022). "A Survey on Satellite Task Scheduling." *Aerospace*. [MDPI](https://www.mdpi.com/2226-4310/9/1/33)
-- Wang, P., et al. (2016). "Multi-Objective Satellite Scheduling with CP." *Constraints*, 21(3), 402-429. [Springer](https://link.springer.com/article/10.1007/s10601-016-9236-7)
+- Flury, W. (1992). "Rendezvous in Space." *Acta Astronautica*, 27, 195-205. [ScienceDirect](https://www.sciencedirect.com/science/article/pii/009457659290075P)
+- Fehse, W. (2003). *Automated Rendezvous and Docking of Spacecraft*. Cambridge University Press. [Cambridge](https://www.cambridge.org/core/books/automated-rendezvous-and-docking-of-spacecraft/)
+- Goodman, J.L. (2009). "History of Space Shuttle Rendezvous and Proximity Operations." *Journal of Spacecraft and Rockets*. [AIAA](https://arc.aiaa.org/doi/abs/10.2514/1.34396)
+- Izzo, D. (2015). "PyGMO and PyKEP: Open Source Tools for Massively Parallel Optimization in Astrodynamics." *5th International Conference on Astrodynamics Tools and Techniques*. [ESA](https://www.esa.int/gsp/ACT/projects/pygmo_pykep)
 
 ### Difficulte : 4/5
 
@@ -991,7 +991,7 @@ La planification HTN (Hierarchical Task Network) decompose recursivement une tac
 
 ## G3 - Coordination de drones par Multi-Agent Path Finding
 
-Le Multi-Agent Path Finding (MAPF) consiste a calculer les trajectoires optimales d'un ensemble d'agents (drones, robots) partageant un espace commun, de maniere a ce qu'aucune collision ne se produise et que chaque agent atteigne son objectif. C'est un probleme combinatoire extremement difficile (NP-hard) qui se modelise naturellement en CP-SAT avec des contraintes de non-collision (pas deux agents au meme noeud au meme instant), de mouvement (deplacement vers les voisins uniquement), et d'objectif (chaque agent doit atteindre sa cible).
+Le Multi-Agent Path Finding (MAPF) consiste a calculer les trajectoires optimales d'un ensemble d'agents (drones, robots) partageant un espace commun, de maniere a ce qu'aucune collision ne se produise et que chaque agent atteigne son objectif. C'est un probleme combinatoire extremement difficile (NP-hard) qui se modelise naturellement en CP-SAT avec des contraintes de non-collision (pas deux agents au meme noeud au meme instant), de mouvement (deplacement vers les voisins uniquement), et d'objectif (chaque agent doit atteindre sa cible). **Note** : contrairement au Multi-robot Warehouse Task Assignment (annexe #12, EPITA 2025) qui modelise l'affectation de taches dans un entrepot sur grille 2D avec aisles predefinis, ce sujet se concentre sur la coordination de drones en espace aerien ouvert 3D avec contraintes de zones NOTAM, separation ATC (distance minimale en vol libre), conditions meteorologiques dynamiques, et obstacles tridimensionnels (batiments, lignes haute tension). L'espace de recherche est continu (pas de grille) et les contraintes de collision sont tridimensionnelles avec marges de securite.
 
 ### Objectifs
 - Modeliser le MAPF comme un probleme CP-SAT avec contraintes de non-collision temporelles
@@ -1141,7 +1141,7 @@ La cryptanalyse par contraintes consiste a utiliser la programmation par contrai
 
 ## H4 - Covering Arrays avec contraintes semantiques
 
-Les Covering Arrays (CA) sont des matrices N x k ou chaque colonne represente un parametre (facteur) avec v valeurs, telles que toute combinaison de t colonnes contienne tous les t-uplets possibles au moins une fois. Les CA sont utilises pour les tests combinatoires de logiciels (t-way testing) : au lieu de tester toutes les combinaisons (v^k), on teste un sous-ensemble qui couvre toutes les interactions de t parametres. L'ajout de contraintes semantiques (certaines combinaisons sont interdites car impossibles dans le systeme reel) rend le probleme plus difficile et plus interessant.
+Les Covering Arrays (CA) sont des matrices N x k ou chaque colonne represente un parametre (facteur) avec v valeurs, telles que toute combinaison de t colonnes contienne tous les t-uplets possibles au moins une fois. Les CA sont utilises pour les tests combinatoires de logiciels (t-way testing) : au lieu de tester toutes les combinaisons (v^k), on teste un sous-ensemble qui couvre toutes les interactions de t parametres. L'ajout de contraintes semantiques (certaines combinaisons sont interdites car impossibles dans le systeme reel) rend le probleme plus difficile et plus interessant. **Note** : contrairement a l'Automatic Tests Generation basique (annexe #19, EPITA 2025) qui generait des tests unitaires automatiques via analyse de code, ce sujet se concentre sur la construction de Covering Arrays avec t >= 3 (au-dela du pairwise classique), des contraintes semantiques entre parametres (combinaisons interdites exprimees en logique propositionnelle), et la minimisation exacte du nombre de lignes N. L'approche CP-SAT est structurellement differente de la generation de tests : il s'agit d'un probleme d'optimisation combinatoire pur (minimiser N sujet a couverture t-way complete), pas de generation de code de test.
 
 ### Objectifs
 - Modeliser la construction de Covering Arrays (t-way) comme un probleme d'optimisation avec CP-SAT
@@ -1493,6 +1493,7 @@ Les sujets suivants ont ete traites dans des editions precedentes (EPITA 2025, E
 17. Graph Coloring basique (ECE)
 18. Satellite Capture Scheduler (EPITA 2025)
 19. Automatic Tests Generation basique (EPITA 2025)
+20. VRP classique / Vehicle Routing Problem (EPF Min1)
 
 **Note :** Si un sujet de cette liste vous interesse, vous pouvez le proposer comme base dans une categorie L (Competition) si vous apportez une contribution technique significative (nouvelle heuristique, nouveau modele, benchmark original). Contactez l'equipe pedagogique pour validation prealable.
 
