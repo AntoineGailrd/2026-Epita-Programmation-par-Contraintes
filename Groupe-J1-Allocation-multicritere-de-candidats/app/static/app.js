@@ -13,11 +13,69 @@ const compatibilityResults = document.getElementById("compatibility-results");
 const compatibilityCandidateFilter = document.getElementById("compatibility-candidate-filter");
 const compatibilityJobFilter = document.getElementById("compatibility-job-filter");
 const compatibilityTopK = document.getElementById("compatibility-top-k");
+const compatibilityWeightSummary = document.getElementById("compatibility-weight-summary");
+const weightGroupInputs = document.querySelectorAll("[data-weight-group]");
+const sliderValueOutputs = document.querySelectorAll("[data-slider-value-for]");
+const resetCriterionWeightsButton = document.getElementById("reset-criterion-weights");
 const runCompatibilityButton = document.getElementById("run-compatibility");
+const heroCandidateCount = document.getElementById("hero-candidate-count");
+const heroJobCount = document.getElementById("hero-job-count");
+const heroMatchCount = document.getElementById("hero-match-count");
 const validationTargets = document.querySelectorAll("input, textarea, select");
 
 let cachedCandidates = [];
 let cachedJobs = [];
+const animatedMetricValues = new WeakMap();
+const defaultGroupSliders = {
+  practical_fit: 100,
+  education_focus: 100,
+  experience_growth: 100,
+  skills_match: 100,
+  role_and_culture: 100,
+};
+const criterionWeightGroups = {
+  practical_fit: {
+    label: "Contraintes pratiques",
+    criteria: {
+      location: 0.10,
+      contract: 0.08,
+      salary: 0.08,
+    },
+  },
+  education_focus: {
+    label: "Diplôme",
+    criteria: {
+      education: 0.08,
+    },
+  },
+  experience_growth: {
+    label: "Expérience et progression",
+    criteria: {
+      experience: 0.12,
+      learning_potential: 0.05,
+    },
+  },
+  skills_match: {
+    label: "Compétences",
+    criteria: {
+      required_skills: 0.20,
+      desired_skills: 0.10,
+    },
+  },
+  role_and_culture: {
+    label: "Alignement humain et métier",
+    criteria: {
+      role_alignment: 0.12,
+      motivation: 0.10,
+      culture: 0.05,
+    },
+  },
+};
+let compatibilityRefreshTimer = null;
+let compatibilityRequestSequence = 0;
+let latestCompatibilityResponseSequence = 0;
+let hasComputedCompatibility = false;
+let latestCompatibilityResponse = null;
 
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -60,11 +118,299 @@ function setStatus(target, message, isError = false) {
   target.style.color = isError ? "#b91c1c" : "#0f766e";
 }
 
+function setMetricValue(target, value) {
+  if (target) {
+    animateMetricValue(target, Number(value) || 0);
+  }
+}
+
+function animateMetricValue(target, nextValue) {
+  const currentTextValue = Number.parseInt(target.textContent || "0", 10) || 0;
+  const previousValue = animatedMetricValues.get(target) ?? currentTextValue;
+  const safeNextValue = Math.max(0, nextValue);
+
+  if (previousValue === safeNextValue) {
+    target.textContent = String(safeNextValue);
+    return;
+  }
+
+  const startTime = performance.now();
+  const duration = 520;
+  target.classList.remove("metric-updated");
+
+  const step = (timestamp) => {
+    const progress = Math.min((timestamp - startTime) / duration, 1);
+    const eased = 1 - ((1 - progress) ** 3);
+    const currentValue = Math.round(previousValue + ((safeNextValue - previousValue) * eased));
+    target.textContent = String(currentValue);
+
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+      return;
+    }
+
+    animatedMetricValues.set(target, safeNextValue);
+    target.textContent = String(safeNextValue);
+    target.classList.add("metric-updated");
+    window.setTimeout(() => target.classList.remove("metric-updated"), 520);
+  };
+
+  window.requestAnimationFrame(step);
+}
+
 function normalizeOptionalNumber(value) {
   if (!value) {
     return null;
   }
   return Number.parseInt(value, 10);
+}
+
+function formatDecimal(value, digits = 2) {
+  const rounded = Number.parseFloat(value.toFixed(digits));
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(digits);
+}
+
+function formatWeightPercent(weight) {
+  return `${formatDecimal(weight * 100, 1)} %`;
+}
+
+function collectWeightGroupValues() {
+  return Array.from(weightGroupInputs).reduce((groups, input) => {
+    const numericValue = Number.parseFloat(input.value || "0");
+    const safeValue = Number.isNaN(numericValue) || numericValue < 0 ? 0 : numericValue;
+    groups[input.dataset.weightGroup] = safeValue / 100;
+    return groups;
+  }, {});
+}
+
+function deriveCriterionWeights() {
+  const groupValues = collectWeightGroupValues();
+  return Object.entries(criterionWeightGroups).reduce((weights, [groupKey, groupConfig]) => {
+    const multiplier = groupValues[groupKey] ?? 1;
+    Object.entries(groupConfig.criteria).forEach(([criterionKey, baseWeight]) => {
+      weights[criterionKey] = baseWeight * multiplier;
+    });
+    return weights;
+  }, {});
+}
+
+function updateSliderValueOutputs() {
+  sliderValueOutputs.forEach((output) => {
+    const targetGroup = output.dataset.sliderValueFor;
+    const input = document.querySelector(`[data-weight-group="${targetGroup}"]`);
+    const numericValue = Number.parseFloat(input?.value || "0");
+    const safeValue = Number.isNaN(numericValue) ? 0 : numericValue;
+    output.textContent = `${Math.round(safeValue)}%`;
+  });
+}
+
+function updateCriterionWeightSummary() {
+  if (!compatibilityWeightSummary) {
+    return;
+  }
+
+  updateSliderValueOutputs();
+  const weights = deriveCriterionWeights();
+  const total = Object.values(weights).reduce((sum, value) => sum + value, 0);
+  if (total <= 0) {
+    compatibilityWeightSummary.textContent = "Tous les blocs sont à 0. Le calcul ne peut pas être lancé.";
+    compatibilityWeightSummary.style.color = "#b91c1c";
+    return;
+  }
+
+  const groupValues = collectWeightGroupValues();
+  const distributionText = Object.entries(criterionWeightGroups)
+    .map(([groupKey, groupConfig]) => {
+      const groupWeight = Object.keys(groupConfig.criteria)
+        .reduce((sum, criterionKey) => sum + (weights[criterionKey] || 0), 0);
+      const sliderPercent = Math.round((groupValues[groupKey] ?? 0) * 100);
+      return `${groupConfig.label} ${sliderPercent}% -> ${formatWeightPercent(groupWeight / total)}`;
+    })
+    .join(" • ");
+
+  compatibilityWeightSummary.textContent = `Répartition effective: ${distributionText}`;
+  compatibilityWeightSummary.style.color = "#0f766e";
+}
+
+function resetCriterionWeights() {
+  weightGroupInputs.forEach((input) => {
+    const defaultValue = defaultGroupSliders[input.dataset.weightGroup];
+    input.value = String(defaultValue);
+  });
+  updateCriterionWeightSummary();
+}
+
+function compatibilityPayload() {
+  return {
+    candidate_ids: compatibilityCandidateFilter.value ? [compatibilityCandidateFilter.value] : [],
+    job_ids: compatibilityJobFilter.value ? [compatibilityJobFilter.value] : [],
+    top_k_per_candidate: Number.parseInt(compatibilityTopK.value || "5", 10),
+    criterion_weights: deriveCriterionWeights(),
+  };
+}
+
+function clampScore(value) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function computeResultWithWeights(result, criterionWeights) {
+  const criteria = result.criteria.map((criterion) => {
+    const weight = criterionWeights[criterion.key] || 0;
+    const weightedScore = Number((criterion.score * weight).toFixed(2));
+    return {
+      ...criterion,
+      weight,
+      weighted_score: weightedScore,
+    };
+  });
+
+  const baseScore = Math.min(
+    100,
+    Number(criteria.reduce((sum, criterion) => sum + (criterion.score * criterion.weight), 0).toFixed(2)),
+  );
+  let finalScore = baseScore;
+  (result.penalties || []).forEach((penalty) => {
+    finalScore *= penalty.factor;
+  });
+
+  return {
+    ...result,
+    base_score: baseScore,
+    overall_score: clampScore(finalScore),
+    criteria,
+  };
+}
+
+function currentWeightedResults() {
+  if (!latestCompatibilityResponse?.results) {
+    return [];
+  }
+
+  const criterionWeights = deriveCriterionWeights();
+  return latestCompatibilityResponse.results.map((result) => computeResultWithWeights(result, criterionWeights));
+}
+
+function updateScoreDisplay(element, nextScore) {
+  if (!element) {
+    return;
+  }
+
+  const safeTarget = Math.max(0, Math.min(100, Number.isNaN(nextScore) ? 0 : nextScore));
+  element.dataset.targetScore = String(safeTarget);
+  element.textContent = `${safeTarget}%`;
+  const meter = element.closest(".criterion-pill, .overall-score-card")?.querySelector("[data-score-fill]");
+  if (meter) {
+    meter.style.setProperty("--score-fill", `${safeTarget}%`);
+  }
+}
+
+function updateCompatibilityScoresInPlace() {
+  if (!latestCompatibilityResponse?.results?.length) {
+    return;
+  }
+
+  const weightedResults = currentWeightedResults();
+  const weightedByKey = new Map(
+    weightedResults.map((result) => [`${result.candidate_id}::${result.job_id}`, result]),
+  );
+
+  compatibilityResults.querySelectorAll(".compatibility-item").forEach((article) => {
+    const resultKey = article.dataset.resultKey;
+    const weightedResult = weightedByKey.get(resultKey);
+    if (!weightedResult) {
+      return;
+    }
+
+    const overallElement = article.querySelector('[data-role="overall-score"]');
+    updateScoreDisplay(overallElement, weightedResult.overall_score);
+
+    const baseScoreElement = article.querySelector('[data-role="base-score"]');
+    if (baseScoreElement) {
+      baseScoreElement.textContent = `Score brut ${Math.round(weightedResult.base_score)}% avant pénalités éventuelles`;
+    }
+
+    weightedResult.criteria.forEach((criterion) => {
+      const metaElement = article.querySelector(
+        `[data-role="criterion-meta"][data-criterion-key="${criterion.key}"]`,
+      );
+      if (metaElement) {
+        metaElement.textContent = `${criterion.score}% • poids ${formatWeightPercent(criterion.weight)} • source ${criterion.source}`;
+      }
+    });
+  });
+
+  compatibilityResults.querySelectorAll("[data-role='group-average']").forEach((element) => {
+    const jobId = element.dataset.jobId;
+    const groupResults = weightedResults.filter((result) => result.job_id === jobId);
+    if (!groupResults.length) {
+      return;
+    }
+    const averageScore = Math.round(
+      groupResults.reduce((sum, result) => sum + result.overall_score, 0) / groupResults.length,
+    );
+    element.textContent = `Moyenne ${averageScore}%`;
+  });
+}
+
+async function runCompatibilityCalculation(options = {}) {
+  const { silent = false, statusMessage = "Calcul en cours..." } = options;
+  if (compatibilityRefreshTimer) {
+    window.clearTimeout(compatibilityRefreshTimer);
+    compatibilityRefreshTimer = null;
+  }
+
+  const payload = compatibilityPayload();
+  const totalWeight = Object.values(payload.criterion_weights).reduce((sum, value) => sum + value, 0);
+  if (totalWeight <= 0) {
+    throw new Error("Veuillez laisser au moins un bloc avec un poids strictement positif.");
+  }
+
+  const requestSequence = compatibilityRequestSequence + 1;
+  compatibilityRequestSequence = requestSequence;
+  setStatus(compatibilityStatus, statusMessage);
+
+  const response = await saveRecord("/api/compatibility", payload);
+  if (requestSequence < latestCompatibilityResponseSequence) {
+    return null;
+  }
+
+  latestCompatibilityResponseSequence = requestSequence;
+  hasComputedCompatibility = true;
+  renderCompatibilityResults(response);
+  setStatus(compatibilityStatus, silent ? "Compatibilités mises à jour en direct." : "Calcul terminé.");
+  return response;
+}
+
+function scheduleLiveCompatibilityRefresh() {
+  if (!cachedCandidates.length || !cachedJobs.length) {
+    return;
+  }
+
+  if (compatibilityRefreshTimer) {
+    window.clearTimeout(compatibilityRefreshTimer);
+  }
+
+  compatibilityRefreshTimer = window.setTimeout(async () => {
+    compatibilityRefreshTimer = null;
+    try {
+      await runCompatibilityCalculation({
+        silent: true,
+        statusMessage: "Mise à jour en direct des compatibilités...",
+      });
+    } catch (error) {
+      setStatus(compatibilityStatus, `Erreur: ${error.message}`, true);
+    }
+  }, 260);
+}
+
+function applySliderChangesLocally() {
+  updateCriterionWeightSummary();
+  if (!hasComputedCompatibility) {
+    return;
+  }
+
+  updateCompatibilityScoresInPlace();
+  setStatus(compatibilityStatus, "Compatibilités mises à jour localement.");
 }
 
 function frenchValidationMessage(field) {
@@ -239,6 +585,46 @@ function formatSkills(skills, fallback = "Non renseigné") {
     : fallback;
 }
 
+function animateScoreElements(root = document) {
+  const scoreElements = root.querySelectorAll("[data-target-score]");
+
+  scoreElements.forEach((element, index) => {
+    const targetScore = Number.parseInt(element.dataset.targetScore || "0", 10);
+    const safeTarget = Math.max(0, Math.min(100, Number.isNaN(targetScore) ? 0 : targetScore));
+    const startTime = performance.now() + (index * 45);
+    const duration = 720;
+
+    const step = (timestamp) => {
+      if (timestamp < startTime) {
+        window.requestAnimationFrame(step);
+        return;
+      }
+
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const eased = 1 - ((1 - progress) ** 4);
+      const value = Math.round(safeTarget * eased);
+      element.textContent = `${value}%`;
+
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+        return;
+      }
+
+      element.textContent = `${safeTarget}%`;
+      element.classList.add("score-animated");
+
+      const meter = element.closest(".criterion-pill, .overall-score-card")?.querySelector("[data-score-fill]");
+      if (meter) {
+        meter.style.setProperty("--score-fill", `${safeTarget}%`);
+        meter.classList.add("score-fill-active");
+      }
+    };
+
+    element.textContent = "0%";
+    window.requestAnimationFrame(step);
+  });
+}
+
 function renderTags(values, fallback = "Non renseigné") {
   if (!values || !values.length) {
     return `<span class="inline-text">${fallback}</span>`;
@@ -260,6 +646,27 @@ function renderDetailRows(rows) {
             <div class="detail-row">
               <span class="detail-label">${row.label}</span>
               <span class="detail-value">${row.value || "Non renseigné"}</span>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderExplanationDetails(details) {
+  if (!details || !details.length) {
+    return "";
+  }
+
+  return `
+    <div class="explanation-detail-list">
+      ${details
+        .map(
+          (detail) => `
+            <div class="explanation-detail-row">
+              <span class="explanation-detail-label">${detail.label}</span>
+              <span class="explanation-detail-value">${detail.value}</span>
             </div>
           `,
         )
@@ -460,6 +867,7 @@ async function loadCandidates() {
   const response = await fetch("/api/candidates");
   const items = await response.json();
   cachedCandidates = items;
+  setMetricValue(heroCandidateCount, items.length);
   renderCandidateList(items);
   fillSelectOptions(
     compatibilityCandidateFilter,
@@ -472,6 +880,7 @@ async function loadJobs() {
   const response = await fetch("/api/jobs");
   const items = await response.json();
   cachedJobs = items;
+  setMetricValue(heroJobCount, items.length);
   renderJobList(items);
   fillSelectOptions(
     compatibilityJobFilter,
@@ -482,6 +891,8 @@ async function loadJobs() {
 
 function renderCompatibilityResults(payload) {
   const results = payload.results || [];
+  latestCompatibilityResponse = JSON.parse(JSON.stringify(payload));
+  setMetricValue(heroMatchCount, results.length);
   compatibilityMeta.textContent = `Mode embeddings: ${payload.embedding_mode} • Modèle: ${payload.embedding_model} • Résultats: ${results.length}`;
 
   if (!results.length) {
@@ -514,8 +925,11 @@ function renderCompatibilityResults(payload) {
         .map(
           (criterion) => `
             <div class="criterion-pill">
-              <strong>${criterion.score}%</strong>
+              <strong class="criterion-score-value" data-target-score="${criterion.score}">0%</strong>
               <span>${criterion.label}</span>
+              <span class="criterion-meter" aria-hidden="true">
+                <span class="criterion-meter-fill" data-score-fill></span>
+              </span>
               <span>Source: ${criterion.source}</span>
             </div>
           `,
@@ -532,9 +946,10 @@ function renderCompatibilityResults(payload) {
             <div class="explanation-item">
               <div class="explanation-head">
                 <strong>${criterion.label}</strong>
-                <span>${criterion.score}% • poids ${criterion.weight} • source ${criterion.source}</span>
+                <span data-role="criterion-meta" data-criterion-key="${criterion.key}">${criterion.score}% • poids ${formatWeightPercent(criterion.weight)} • source ${criterion.source}</span>
               </div>
               <p>${criterion.explanation}</p>
+              ${renderExplanationDetails(criterion.details)}
             </div>
           `,
         )
@@ -561,17 +976,18 @@ function renderCompatibilityResults(payload) {
         : "";
 
       return `
-        <article class="record-item compatibility-item" data-expanded="false">
+        <article class="record-item compatibility-item" data-expanded="false" data-result-key="${item.candidate_id}::${item.job_id}">
           <button type="button" class="compatibility-toggle" aria-expanded="false">
             <span class="compatibility-header-main">
               <span class="compatibility-kicker">Compatibilité candidat-poste</span>
               <h3>${item.candidate_name} -> ${item.job_title}</h3>
-              <p class="record-meta">Score brut ${Math.round(item.base_score)}% avant pénalités éventuelles</p>
+              <p class="record-meta" data-role="base-score">Score brut ${Math.round(item.base_score)}% avant pénalités éventuelles</p>
             </span>
-            <span class="compatibility-header-side">
+              <span class="compatibility-header-side">
               <span class="overall-score-card">
-                <span class="overall-score-value">${item.overall_score}%</span>
+                <span class="overall-score-value" data-role="overall-score" data-target-score="${item.overall_score}">0%</span>
                 <span class="overall-score-label">Compatibilité globale</span>
+                <span class="overall-score-ring" data-score-fill aria-hidden="true"></span>
               </span>
               <span class="toggle-label">
                 <span class="toggle-text">Voir les explications</span>
@@ -604,7 +1020,7 @@ function renderCompatibilityResults(payload) {
               </div>
               <div class="compatibility-group-metrics">
                 <span class="badge">${sortedItems.length} candidat(s)</span>
-                <span class="badge">Moyenne ${averageScore}%</span>
+                <span class="badge" data-role="group-average" data-job-id="${sortedItems[0]?.job_id || ""}">Moyenne ${averageScore}%</span>
                 <span class="group-toggle-label">
                   <span class="group-toggle-text">Voir les compatibilités</span>
                   <span class="toggle-arrow" aria-hidden="true">▾</span>
@@ -619,6 +1035,8 @@ function renderCompatibilityResults(payload) {
       `;
     })
     .join("");
+
+  animateScoreElements(compatibilityResults);
 }
 
 candidateForm.addEventListener("submit", async (event) => {
@@ -665,19 +1083,10 @@ document.getElementById("refresh-jobs").addEventListener("click", () => {
 });
 
 runCompatibilityButton.addEventListener("click", async () => {
-  setStatus(compatibilityStatus, "Calcul en cours...");
-
   try {
-    const payload = {
-      candidate_ids: compatibilityCandidateFilter.value ? [compatibilityCandidateFilter.value] : [],
-      job_ids: compatibilityJobFilter.value ? [compatibilityJobFilter.value] : [],
-      top_k_per_candidate: Number.parseInt(compatibilityTopK.value || "5", 10),
-    };
-
-    const response = await saveRecord("/api/compatibility", payload);
-    renderCompatibilityResults(response);
-    setStatus(compatibilityStatus, "Calcul terminé.");
+    await runCompatibilityCalculation();
   } catch (error) {
+    setMetricValue(heroMatchCount, 0);
     compatibilityMeta.textContent = "";
     compatibilityResults.innerHTML = "";
     setStatus(compatibilityStatus, `Erreur: ${error.message}`, true);
@@ -743,6 +1152,27 @@ jobList.addEventListener("click", (event) => {
   handleExpandableListClick(event, "Voir le poste", "Masquer le poste");
 });
 
+weightGroupInputs.forEach((input) => {
+  input.addEventListener("input", () => {
+    applySliderChangesLocally();
+  });
+});
+
+resetCriterionWeightsButton.addEventListener("click", () => {
+  resetCriterionWeights();
+  if (hasComputedCompatibility) {
+    updateCompatibilityScoresInPlace();
+    setStatus(compatibilityStatus, "Compatibilités remises à jour avec les sliders par défaut.");
+  }
+});
+
+[compatibilityCandidateFilter, compatibilityJobFilter].forEach((input) => {
+  input.addEventListener("change", scheduleLiveCompatibilityRefresh);
+});
+
+compatibilityTopK.addEventListener("input", scheduleLiveCompatibilityRefresh);
+
 loadCandidates().catch(() => renderCandidateList([]));
 loadJobs().catch(() => renderJobList([]));
 attachFrenchValidation();
+updateCriterionWeightSummary();

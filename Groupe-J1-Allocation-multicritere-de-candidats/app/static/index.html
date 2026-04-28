@@ -3,39 +3,84 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Collecte des profils</title>
+    <title>Talent Matching Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
+    <div class="ambient ambient-left" aria-hidden="true"></div>
+    <div class="ambient ambient-right" aria-hidden="true"></div>
+
     <main class="page">
       <section class="hero">
         <div class="hero-panel">
           <div class="hero-copy">
-            <p class="eyebrow">J1 MVP</p>
-            <h1>Collecte structurée des profils candidats et postes</h1>
+            <p class="eyebrow">EPITA • J1 • Constraint Programming</p>
+            <h1>Studio de matching IA pour profils candidats et postes ouverts</h1>
             <p class="lead">
-              Chaque formulaire est découpé par bloc métier pour alimenter ensuite le scoring,
-              les embeddings et l'optimisation sous contraintes.
+              Une interface unique pour structurer les profils, calculer un score explicable et
+              préparer une allocation multicritère sous contraintes avec une base de données légère
+              et un scoring enrichi par similarité sémantique.
             </p>
+            <div class="hero-metrics" aria-label="Indicateurs rapides">
+              <article class="metric-card">
+                <span class="metric-label">Candidats</span>
+                <strong id="hero-candidate-count">0</strong>
+                <span class="metric-caption">Profils enregistrés</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Postes</span>
+                <strong id="hero-job-count">0</strong>
+                <span class="metric-caption">Opportunités actives</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Matches</span>
+                <strong id="hero-match-count">0</strong>
+                <span class="metric-caption">Dernier calcul affiché</span>
+              </article>
+            </div>
           </div>
           <aside class="hero-aside" aria-label="Résumé produit">
-            <div class="hero-note">
-              <strong>Collecte fiable</strong>
-              <span>Champs structurés, texte libre et blocs RH séparés.</span>
+            <div class="hero-note hero-note-strong">
+              <span class="note-kicker">Pipeline</span>
+              <strong>Collecte structurée, scoring détaillé, lecture décisionnelle</strong>
+              <span>
+                Les formulaires alimentent un moteur de compatibilité pondéré avec explicabilité par
+                critère et pénalités métier.
+              </span>
             </div>
             <div class="hero-note">
-              <strong>Scoring explicable</strong>
-              <span>Compatibilités détaillées, pondérées et justifiées.</span>
+              <strong>Embeddings avec repli lexical</strong>
+              <span>Le scoring sémantique bascule automatiquement en mode fallback si l’API distante n’est pas configurée.</span>
             </div>
             <div class="hero-note">
-              <strong>Suite logique</strong>
-              <span>Embeddings, ranking et allocation sous contraintes.</span>
+              <strong>Préparation à l’optimisation</strong>
+              <span>Les sorties sont déjà triées et prêtes à alimenter une étape d’allocation sous contraintes.</span>
             </div>
           </aside>
         </div>
       </section>
 
+      <section class="workspace-summary card">
+        <div>
+          <p class="section-kicker">Vue d’ensemble</p>
+          <h2>Trois espaces de travail pour saisir, comparer et arbitrer</h2>
+        </div>
+        <div class="summary-rail">
+          <div class="summary-pill">FastAPI</div>
+          <div class="summary-pill">JSON Repository</div>
+          <div class="summary-pill">Scoring pondéré</div>
+          <div class="summary-pill">Embeddings / fallback</div>
+        </div>
+      </section>
+
       <section class="tabs" aria-label="Navigation">
+        <span class="tabs-caption">Espaces</span>
         <button class="tab-button active" data-tab="candidate">Profil candidat</button>
         <button class="tab-button" data-tab="job">Profil poste</button>
         <button class="tab-button" data-tab="compatibility">Compatibilités</button>
@@ -43,9 +88,14 @@
 
       <section class="tab-panel active" id="candidate-panel">
         <form id="candidate-form" class="card form-layout">
-          <div class="section-header">
-            <h2>Profil candidat</h2>
-            <p>Un formulaire structuré par caractéristiques explicites et texte libre.</p>
+          <div class="panel-banner">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Intake candidat</p>
+                <h2>Construire un profil riche et exploitable</h2>
+              </div>
+              <p>Chaque bloc combine signal structuré, préférences et texte libre pour nourrir le matching.</p>
+            </div>
           </div>
 
           <fieldset class="block">
@@ -250,9 +300,13 @@
         </form>
 
         <section class="card list-card">
+          <div class="panel-banner panel-banner-compact">
+            <p class="section-kicker">Base candidats</p>
+            <h2>Profils enregistrés</h2>
+          </div>
           <div class="section-header">
-            <h2>Candidats enregistrés</h2>
             <button type="button" id="refresh-candidates" class="secondary">Rafraîchir</button>
+            <p>Consultation détaillée avec ouverture par carte.</p>
           </div>
           <div id="candidate-list" class="record-list"></div>
         </section>
@@ -260,9 +314,14 @@
 
       <section class="tab-panel" id="job-panel">
         <form id="job-form" class="card form-layout">
-          <div class="section-header">
-            <h2>Profil poste</h2>
-            <p>Les blocs structurés séparent exigences dures, description sémantique et conditions.</p>
+          <div class="panel-banner">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Intake poste</p>
+                <h2>Définir précisément le besoin à pourvoir</h2>
+              </div>
+              <p>Les sections isolent les contraintes dures, les signaux culturels et les perspectives d’évolution.</p>
+            </div>
           </div>
 
           <fieldset class="block">
@@ -416,9 +475,13 @@
         </form>
 
         <section class="card list-card">
-          <div class="section-header">
+          <div class="panel-banner panel-banner-compact">
+            <p class="section-kicker">Base postes</p>
             <h2>Postes enregistrés</h2>
+          </div>
+          <div class="section-header">
             <button type="button" id="refresh-jobs" class="secondary">Rafraîchir</button>
+            <p>Vision condensée puis détail complet par fiche.</p>
           </div>
           <div id="job-list" class="record-list"></div>
         </section>
@@ -426,9 +489,14 @@
 
       <section class="tab-panel" id="compatibility-panel">
         <section class="card form-layout">
-          <div class="section-header">
-            <h2>Calcul des compatibilités</h2>
-            <p>Scores détaillés par critère pour chaque couple candidat-poste.</p>
+          <div class="panel-banner">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker panel-banner-kicker">Matching</p>
+                <h2>Lancer le calcul des compatibilités</h2>
+                <p class="panel-banner-note">Le moteur renvoie un score global, les sous-critères pondérés et les pénalités appliquées.</p>
+              </div>
+            </div>
           </div>
 
           <div class="grid">
@@ -450,6 +518,101 @@
             </label>
           </div>
 
+          <fieldset class="block">
+            <legend>Pondération des critères</legend>
+            <p class="hint">
+              Les sliders pilotent des blocs de critères. Vous pouvez par exemple renforcer
+              fortement le diplôme tout en diminuant les contraintes pratiques; le moteur
+              renormalise ensuite automatiquement tous les poids.
+            </p>
+            <div class="weight-toolbar">
+              <p id="compatibility-weight-summary" class="status">Répartition effective en attente.</p>
+              <button type="button" id="reset-criterion-weights" class="secondary">Réinitialiser les sliders</button>
+            </div>
+            <div class="weight-slider-grid">
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Contraintes pratiques</span>
+                  <strong data-slider-value-for="practical_fit">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Localisation, contrat, salaire</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="practical_fit"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Diplôme</span>
+                  <strong data-slider-value-for="education_focus">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Formation et niveau académique minimum</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="education_focus"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Expérience et progression</span>
+                  <strong data-slider-value-for="experience_growth">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Expérience, potentiel d'apprentissage</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="experience_growth"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Compétences</span>
+                  <strong data-slider-value-for="skills_match">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Compétences obligatoires et souhaitées</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="skills_match"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Alignement humain et métier</span>
+                  <strong data-slider-value-for="role_and_culture">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Poste visé, motivation, culture et valeurs</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="role_and_culture"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+            </div>
+          </fieldset>
+
           <div class="actions">
             <button type="button" id="run-compatibility" class="primary-action">Calculer les compatibilités</button>
             <p id="compatibility-status" class="status" aria-live="polite"></p>
@@ -457,8 +620,12 @@
         </section>
 
         <section class="card list-card">
+          <div class="panel-banner panel-banner-compact">
+            <p class="section-kicker panel-banner-kicker">Lecture des scores</p>
+            <h2>Résultats détaillés</h2>
+            <p class="panel-banner-note">Regroupement par poste puis détail critère par critère.</p>
+          </div>
           <div class="section-header">
-            <h2>Résultats</h2>
             <p id="compatibility-meta" class="status"></p>
           </div>
           <div id="compatibility-results" class="record-list"></div>

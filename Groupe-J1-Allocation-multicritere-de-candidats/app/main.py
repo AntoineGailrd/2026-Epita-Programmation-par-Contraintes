@@ -89,7 +89,12 @@ def compute_compatibility(request: CompatibilityRequest) -> CompatibilityRespons
     if not jobs:
         raise HTTPException(status_code=400, detail="Aucun poste disponible pour le calcul.")
 
-    return compatibility_scorer.score_all(candidates, jobs, request.top_k_per_candidate)
+    return compatibility_scorer.score_all(
+        candidates,
+        jobs,
+        request.top_k_per_candidate,
+        request.criterion_weights,
+    )
 
 
 if __name__ == "__main__":

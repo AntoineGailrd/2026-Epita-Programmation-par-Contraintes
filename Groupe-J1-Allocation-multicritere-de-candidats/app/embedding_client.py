@@ -125,7 +125,16 @@ class EmbeddingClient:
                 result = similarity, "embedding"
                 self._similarity_cache[cache_key] = result
                 return result
-            except (error.URLError, error.HTTPError, TimeoutError, ValueError, KeyError, json.JSONDecodeError):
+            except (
+                error.URLError,
+                error.HTTPError,
+                TimeoutError,
+                ValueError,
+                KeyError,
+                IndexError,
+                TypeError,
+                json.JSONDecodeError,
+            ):
                 pass
 
         similarity = lexical_similarity(normalized_left, normalized_right)

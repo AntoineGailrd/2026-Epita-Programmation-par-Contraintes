@@ -130,6 +130,12 @@ class CompatibilityRequest(BaseModel):
     candidate_ids: List[str] = Field(default_factory=list)
     job_ids: List[str] = Field(default_factory=list)
     top_k_per_candidate: int = Field(default=5, ge=1, le=50)
+    criterion_weights: dict[str, float] = Field(default_factory=dict)
+
+
+class CriterionDetail(BaseModel):
+    label: str
+    value: str
 
 
 class CriterionScore(BaseModel):
@@ -140,6 +146,7 @@ class CriterionScore(BaseModel):
     weighted_score: float = Field(..., ge=0)
     source: ScoreSource
     explanation: str
+    details: List[CriterionDetail] = Field(default_factory=list)
 
 
 class CompatibilityPenalty(BaseModel):
