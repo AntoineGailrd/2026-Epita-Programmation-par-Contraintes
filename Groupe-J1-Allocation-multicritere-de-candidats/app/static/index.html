@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Talent Matching Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-left" aria-hidden="true"></div>
+    <div class="ambient ambient-right" aria-hidden="true"></div>
+
+    <main class="page">
+      <section class="hero">
+        <div class="hero-panel">
+          <div class="hero-copy">
+            <p class="eyebrow">EPITA • J1 • Constraint Programming</p>
+            <h1>Studio de matching IA pour profils candidats et postes ouverts</h1>
+            <p class="lead">
+              Une interface unique pour structurer les profils, calculer un score explicable et
+              préparer une allocation multicritère sous contraintes avec une base de données légère
+              et un scoring enrichi par similarité sémantique.
+            </p>
+            <div class="hero-metrics" aria-label="Indicateurs rapides">
+              <article class="metric-card">
+                <span class="metric-label">Candidats</span>
+                <strong id="hero-candidate-count">0</strong>
+                <span class="metric-caption">Profils enregistrés</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Postes</span>
+                <strong id="hero-job-count">0</strong>
+                <span class="metric-caption">Opportunités actives</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Matches</span>
+                <strong id="hero-match-count">0</strong>
+                <span class="metric-caption">Dernier calcul affiché</span>
+              </article>
+            </div>
+          </div>
+          <aside class="hero-aside" aria-label="Résumé produit">
+            <div class="hero-note hero-note-strong">
+              <span class="note-kicker">Pipeline</span>
+              <strong>Collecte structurée, scoring détaillé, lecture décisionnelle</strong>
+              <span>
+                Les formulaires alimentent un moteur de compatibilité pondéré avec explicabilité par
+                critère et pénalités métier.
+              </span>
+            </div>
+            <div class="hero-note">
+              <strong>Embeddings avec repli lexical</strong>
+              <span>Le scoring sémantique bascule automatiquement en mode fallback si l’API distante n’est pas configurée.</span>
+            </div>
+            <div class="hero-note">
+              <strong>Préparation à l’optimisation</strong>
+              <span>Les sorties sont déjà triées et prêtes à alimenter une étape d’allocation sous contraintes.</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="workspace-summary card">
+        <div>
+          <p class="section-kicker">Vue d’ensemble</p>
+          <h2>Trois espaces de travail pour saisir, comparer et arbitrer</h2>
+        </div>
+        <div class="summary-rail">
+          <div class="summary-pill">FastAPI</div>
+          <div class="summary-pill">JSON Repository</div>
+          <div class="summary-pill">Scoring pondéré</div>
+          <div class="summary-pill">Embeddings / fallback</div>
+        </div>
+      </section>
+
+      <section class="tabs" aria-label="Navigation">
+        <span class="tabs-caption">Espaces</span>
+        <button class="tab-button active" data-tab="candidate">Profil candidat</button>
+        <button class="tab-button" data-tab="job">Profil poste</button>
+        <button class="tab-button" data-tab="compatibility">Compatibilités</button>
+      </section>
+
+      <section class="tab-panel active" id="candidate-panel">
+        <form id="candidate-form" class="card form-layout">
+          <div class="panel-banner">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Intake candidat</p>
+                <h2>Construire un profil riche et exploitable</h2>
+              </div>
+              <p>Chaque bloc combine signal structuré, préférences et texte libre pour nourrir le matching.</p>
+            </div>
+          </div>
+
+          <fieldset class="block">
+            <legend>Identité pro</legend>
+            <div class="grid">
+              <label>
+                Nom complet
+                <input name="full_name" required />
+              </label>
+              <label>
+                Email
+                <input name="email" type="email" />
+              </label>
+              <label>
+                Titre actuel
+                <input name="current_title" />
+              </label>
+              <label>
+                Années d'expérience
+                <input name="years_experience" type="number" min="0" max="60" value="0" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Localisation</legend>
+            <div class="grid">
+              <label>
+                Ville
+                <input name="location_city" required />
+              </label>
+              <label>
+                Pays
+                <input name="location_country" value="France" />
+              </label>
+              <label>
+                Préférence de travail
+                <select name="location_remote_preference">
+                  <option value="hybrid">Hybride</option>
+                  <option value="remote">Remote</option>
+                  <option value="on_site">Sur site</option>
+                </select>
+              </label>
+              <label>
+                Mobilité max (km)
+                <input name="location_mobility_km" type="number" min="0" value="0" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Compétences</legend>
+            <p class="hint">Format attendu : `Python:4, SQL:3, Gestion de projet:5`</p>
+            <div class="grid">
+              <label class="full-width">
+                Compétences techniques
+                <textarea name="skills_technical" rows="3"></textarea>
+              </label>
+              <label class="full-width">
+                Compétences fonctionnelles
+                <textarea name="skills_functional" rows="3"></textarea>
+              </label>
+              <label class="full-width">
+                Langues
+                <textarea name="skills_language" rows="2" placeholder="Français:5, Anglais:4"></textarea>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Formation</legend>
+            <div class="grid">
+              <label>
+                Diplôme
+                <input name="education_degree" />
+              </label>
+              <label>
+                Domaine d'étude
+                <input name="education_field_of_study" />
+              </label>
+              <label class="full-width">
+                Certifications
+                <input name="education_certifications" placeholder="AWS, Scrum, TOEIC" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Préférences</legend>
+            <div class="grid">
+              <label>
+                Postes visés
+                <input name="preferences_target_roles" placeholder="Data Analyst, Product Owner" />
+              </label>
+              <label>
+                Secteurs visés
+                <input name="preferences_target_sectors" placeholder="Santé, Finance" />
+              </label>
+              <div class="full-width field-group">
+                <span>Types de contrat</span>
+                <span class="hint">Sélection multiple possible</span>
+                <div class="checkbox-group" data-group="preferences_contract_types">
+                  <label class="choice-chip">
+                    <input type="checkbox" name="preferences_contract_types" value="cdi" />
+                    <span>CDI</span>
+                  </label>
+                  <label class="choice-chip">
+                    <input type="checkbox" name="preferences_contract_types" value="cdd" />
+                    <span>CDD</span>
+                  </label>
+                  <label class="choice-chip">
+                    <input type="checkbox" name="preferences_contract_types" value="internship" />
+                    <span>Stage</span>
+                  </label>
+                  <label class="choice-chip">
+                    <input type="checkbox" name="preferences_contract_types" value="apprenticeship" />
+                    <span>Alternance</span>
+                  </label>
+                  <label class="choice-chip">
+                    <input type="checkbox" name="preferences_contract_types" value="freelance" />
+                    <span>Freelance</span>
+                  </label>
+                  <label class="choice-chip">
+                    <input type="checkbox" name="preferences_contract_types" value="other" />
+                    <span>Autre</span>
+                  </label>
+                </div>
+              </div>
+              <label>
+                Salaire minimum
+                <input name="preferences_salary_min" type="number" min="0" />
+              </label>
+              <label class="full-width">
+                Valeurs prioritaires
+                <input name="preferences_values" placeholder="Impact, apprentissage, stabilité" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Motivation</legend>
+            <div class="grid">
+              <label class="full-width">
+                Pourquoi voulez-vous ce type de poste ?
+                <textarea name="motivation_free_text" rows="5" required></textarea>
+              </label>
+              <label>
+                Moteurs de motivation
+                <input name="motivation_drivers" placeholder="Impact, apprentissage, autonomie" />
+              </label>
+              <label>
+                Missions préférées
+                <input name="motivation_mission_preferences" placeholder="Analyse, relation client" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Potentiel</legend>
+            <div class="grid">
+              <label>
+                Compétences à apprendre
+                <input name="potential_learning_goals" placeholder="Docker, négociation, management" />
+              </label>
+              <label>
+                Domaines de progression
+                <input name="potential_growth_domains" placeholder="Data engineering, conseil" />
+              </label>
+              <label class="full-width">
+                Expériences transférables
+                <textarea name="potential_transferable_experiences" rows="4"></textarea>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Disponibilités</legend>
+            <div class="grid">
+              <label>
+                Date de début
+                <input name="availability_start_date" type="date" />
+              </label>
+              <label>
+                Rythme
+                <select name="availability_schedule">
+                  <option value="full_time">Temps plein</option>
+                  <option value="part_time">Temps partiel</option>
+                  <option value="either">Flexible</option>
+                </select>
+              </label>
+              <label class="full-width">
+                Contraintes
+                <textarea name="availability_constraints" rows="3"></textarea>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="actions">
+            <button type="submit" class="primary-action">Enregistrer le candidat</button>
+            <p id="candidate-status" class="status" aria-live="polite"></p>
+          </div>
+        </form>
+
+        <section class="card list-card">
+          <div class="panel-banner panel-banner-compact">
+            <p class="section-kicker">Base candidats</p>
+            <h2>Profils enregistrés</h2>
+          </div>
+          <div class="section-header">
+            <button type="button" id="refresh-candidates" class="secondary">Rafraîchir</button>
+            <p>Consultation détaillée avec ouverture par carte.</p>
+          </div>
+          <div id="candidate-list" class="record-list"></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" id="job-panel">
+        <form id="job-form" class="card form-layout">
+          <div class="panel-banner">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Intake poste</p>
+                <h2>Définir précisément le besoin à pourvoir</h2>
+              </div>
+              <p>Les sections isolent les contraintes dures, les signaux culturels et les perspectives d’évolution.</p>
+            </div>
+          </div>
+
+          <fieldset class="block">
+            <legend>Informations générales</legend>
+            <div class="grid">
+              <label>
+                Intitulé
+                <input name="title" required />
+              </label>
+              <label>
+                Équipe
+                <input name="team" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Localisation</legend>
+            <div class="grid">
+              <label>
+                Ville
+                <input name="location_city" required />
+              </label>
+              <label>
+                Pays
+                <input name="location_country" value="France" />
+              </label>
+              <label>
+                Mode de travail
+                <select name="location_work_mode">
+                  <option value="hybrid">Hybride</option>
+                  <option value="remote">Remote</option>
+                  <option value="on_site">Sur site</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Exigences dures</legend>
+            <div class="grid">
+              <label>
+                Diplôme minimum
+                <input name="requirements_minimum_degree" />
+              </label>
+              <label>
+                Expérience minimum
+                <input name="requirements_minimum_years_experience" type="number" min="0" value="0" />
+              </label>
+              <label>
+                Compétences obligatoires
+                <input name="requirements_mandatory_skills" placeholder="Python, SQL, Communication" />
+              </label>
+              <label>
+                Langues
+                <input name="requirements_languages" placeholder="Français, Anglais" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Compétences souhaitées</legend>
+            <p class="hint">Format attendu : `Docker:3, Leadership:4`</p>
+            <label class="full-width">
+              Compétences bonus
+              <textarea name="desired_skills" rows="4"></textarea>
+            </label>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Missions</legend>
+            <label class="full-width">
+              Description des missions
+              <textarea name="missions" rows="6" required></textarea>
+            </label>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Environnement</legend>
+            <div class="grid">
+              <label>
+                Style d'équipe
+                <input name="environment_team_style" placeholder="Petit collectif, transverse" />
+              </label>
+              <label>
+                Rythme
+                <input name="environment_pace" placeholder="Rapide, structuré" />
+              </label>
+              <label class="full-width">
+                Mots-clés de culture
+                <input name="environment_culture_keywords" placeholder="Autonomie, rigueur, impact" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Conditions</legend>
+            <div class="grid">
+              <label>
+                Salaire min
+                <input name="conditions_salary_min" type="number" min="0" />
+              </label>
+              <label>
+                Salaire max
+                <input name="conditions_salary_max" type="number" min="0" />
+              </label>
+              <label>
+                Type de contrat
+                <select name="conditions_contract_type">
+                  <option value="cdi">CDI</option>
+                  <option value="cdd">CDD</option>
+                  <option value="internship">Stage</option>
+                  <option value="apprenticeship">Alternance</option>
+                  <option value="freelance">Freelance</option>
+                  <option value="other">Autre</option>
+                </select>
+              </label>
+              <label>
+                Date de début
+                <input name="conditions_start_date" type="date" />
+              </label>
+              <label>
+                Nombre de places
+                <input name="conditions_capacity" type="number" min="1" value="1" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="block">
+            <legend>Profil recherché</legend>
+            <div class="grid">
+              <label>
+                Traits attendus
+                <input name="target_profile_expected_traits" placeholder="Curiosité, autonomie, clarté" />
+              </label>
+              <label>
+                Attentes d'apprentissage
+                <input name="target_profile_learning_expectations" placeholder="Monter vite sur le produit" />
+              </label>
+              <label class="full-width">
+                Potentiel d'évolution
+                <textarea name="target_profile_growth_potential" rows="4"></textarea>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="actions">
+            <button type="submit" class="primary-action">Enregistrer le poste</button>
+            <p id="job-status" class="status" aria-live="polite"></p>
+          </div>
+        </form>
+
+        <section class="card list-card">
+          <div class="panel-banner panel-banner-compact">
+            <p class="section-kicker">Base postes</p>
+            <h2>Postes enregistrés</h2>
+          </div>
+          <div class="section-header">
+            <button type="button" id="refresh-jobs" class="secondary">Rafraîchir</button>
+            <p>Vision condensée puis détail complet par fiche.</p>
+          </div>
+          <div id="job-list" class="record-list"></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" id="compatibility-panel">
+        <section class="card form-layout">
+          <div class="panel-banner">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker panel-banner-kicker">Matching</p>
+                <h2>Lancer le calcul des compatibilités</h2>
+                <p class="panel-banner-note">Le moteur renvoie un score global, les sous-critères pondérés et les pénalités appliquées.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <label>
+              Candidat
+              <select id="compatibility-candidate-filter">
+                <option value="">Tous les candidats</option>
+              </select>
+            </label>
+            <label>
+              Poste
+              <select id="compatibility-job-filter">
+                <option value="">Tous les postes</option>
+              </select>
+            </label>
+            <label>
+              Top résultats par candidat
+              <input id="compatibility-top-k" type="number" min="1" max="20" value="5" />
+            </label>
+          </div>
+
+          <fieldset class="block">
+            <legend>Pondération des critères</legend>
+            <p class="hint">
+              Les sliders pilotent des blocs de critères. Vous pouvez par exemple renforcer
+              fortement le diplôme tout en diminuant les contraintes pratiques; le moteur
+              renormalise ensuite automatiquement tous les poids.
+            </p>
+            <div class="weight-toolbar">
+              <p id="compatibility-weight-summary" class="status">Répartition effective en attente.</p>
+              <button type="button" id="reset-criterion-weights" class="secondary">Réinitialiser les sliders</button>
+            </div>
+            <div class="weight-slider-grid">
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Contraintes pratiques</span>
+                  <strong data-slider-value-for="practical_fit">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Localisation, contrat, salaire</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="practical_fit"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Diplôme</span>
+                  <strong data-slider-value-for="education_focus">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Formation et niveau académique minimum</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="education_focus"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Expérience et progression</span>
+                  <strong data-slider-value-for="experience_growth">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Expérience, potentiel d'apprentissage</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="experience_growth"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Compétences</span>
+                  <strong data-slider-value-for="skills_match">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Compétences obligatoires et souhaitées</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="skills_match"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="weight-slider-card">
+                <span class="weight-slider-head">
+                  <span>Alignement humain et métier</span>
+                  <strong data-slider-value-for="role_and_culture">100%</strong>
+                </span>
+                <span class="weight-slider-meta">Poste visé, motivation, culture et valeurs</span>
+                <input
+                  class="weight-slider"
+                  data-weight-group="role_and_culture"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="actions">
+            <button type="button" id="run-compatibility" class="primary-action">Calculer les compatibilités</button>
+            <p id="compatibility-status" class="status" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section class="card list-card">
+          <div class="panel-banner panel-banner-compact">
+            <p class="section-kicker panel-banner-kicker">Lecture des scores</p>
+            <h2>Résultats détaillés</h2>
+            <p class="panel-banner-note">Regroupement par poste puis détail critère par critère.</p>
+          </div>
+          <div class="section-header">
+            <p id="compatibility-meta" class="status"></p>
+          </div>
+          <div id="compatibility-results" class="record-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
